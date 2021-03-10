@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""spectra search."""
+"""Funções para criar o arquivo de entrada e de parâmetros."""
 
 # standard libraries
 from pathlib import Path
@@ -23,6 +23,25 @@ from crispy.gui.quanty import broaden
 
 ################# Create input and parameter file
 def create_input(initialSetup_dict, generalSetup_dict, hamiltonianData_dict, folderpath=None, filename=None, magneticField=None, temperature=None, xLorentzian=None, saveParameters2file=True):
+    """Gere o arquivo de entrada.
+
+    Args:
+        initialSetup_dict (dict): Contém dados do elemento e experimento.
+        generalSetup_dict (dict): ?.
+        hamiltonianData_dict (dict): ?.
+        folderpath (?): ?.
+        filename (?): ?.
+        magneticField (?): ?.
+        temperature (?): ?.
+        xLorentzian (?): ?.
+        saveParameters2file (?): ?.
+
+    Return:
+        ?q
+    """
+
+
+
     """ min xLorentzian is 0.1
         # RIXS
         q.yMin
@@ -176,6 +195,13 @@ def create_input(initialSetup_dict, generalSetup_dict, hamiltonianData_dict, fol
 
 
 def _updateMagneticField(q, magneticField):
+    """Blá-blá
+
+    Args:
+        q (?): ?
+        magneticField (?): ?
+    """
+
 
     TESLA_TO_EV = 5.788e-05
 
@@ -196,6 +222,13 @@ def _updateMagneticField(q, magneticField):
 
 
 def _updateIncidentWaveVector(q, k1):
+    """Blá-blá
+
+    Args:
+        q (?): ?
+        k1 (?): ?
+    """
+
 
     # The k1 value should be fine; save it.
     q.k1 = k1
@@ -225,6 +258,12 @@ def _updateIncidentWaveVector(q, k1):
 
 
 def _updateIncidentPolarizationVectors(q, eps11):
+    """Blá-blá
+
+    Args:
+        q (?): ?
+        eps11 (?): ?
+    """
 
     k1 = q.k1
     q.eps11 = eps11
@@ -241,6 +280,16 @@ def _updateIncidentPolarizationVectors(q, eps11):
 def load_parameter(filepath):
     """ initialSetup_dict, generalSetup_dict, hamiltonianData_dict, magneticField, temperature, xLorentzian = load_parameter(filepath)
     """
+
+    """Blá-blá
+
+    Args:
+        filepath (?): ?
+
+    Return:
+        ?
+    """
+
     a = copy.deepcopy(fmanip.load_obj(filepath))
     initialSetup    = a['initialSetup']
     generalSetup    = a['generalSetup']
@@ -252,6 +301,17 @@ def load_parameter(filepath):
 
 
 def run_quanty(quanty_exe, filepath):
+
+    """Blá-blá
+
+    Args:
+        quanty_exe (?): ?
+        filepath (?): ?
+
+    Return:
+        ?
+    """
+
     quanty = subprocess.Popen([f"{quanty_exe} {filepath}"], shell=True, close_fds=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output = quanty.stdout.read().decode("utf-8")
     error  = quanty.stderr.read().decode("utf-8")
@@ -266,6 +326,18 @@ def run_quanty(quanty_exe, filepath):
 
 
 def fix_spectrum(filepath, xMin, xMax, xNPoints, xGaussian):
+    """?
+
+    Args:
+        filepath (?): ?
+        xMin (?): ?
+        xMax (?): ?
+        xNPoints (?): ?
+        xGaussian (?): ?
+
+    Return:
+        ?
+    """
 
     try:
         data = np.loadtxt(filepath, skiprows=5)
@@ -284,6 +356,15 @@ def fix_spectrum(filepath, xMin, xMax, xNPoints, xGaussian):
 
 
 def expand_hamiltanianData(hamiltonianData_dict, synchronize=False):
+    """?
+
+    Args:
+        hamiltonianData_dict (?): ?
+        synchronize (?): ?
+      
+    Return:
+        ?
+    """
 
     # calculate total number of different hamiltonianData
     t_total = 1
@@ -377,6 +458,14 @@ def expand_hamiltanianData(hamiltonianData_dict, synchronize=False):
 
 
 def _check_sync(hamiltonianData_dict):
+   """?
+
+    Args:
+        hamiltonianData_dict (?): ?
+             
+    Return:
+        ?
+    """
 
     hamiltonianData_dict2 = copy.deepcopy(hamiltonianData_dict)
     for key in hamiltonianData_dict2:
@@ -397,6 +486,21 @@ def _check_sync(hamiltonianData_dict):
 
 
 def create_spectra(initialSetup_dict, generalSetup_dict, hamiltonianData_dict_list, magneticField_list, temperature_list, xLorentzian_list, xGaussian_list, folderpath, quanty_exe, prefix='untitled_', verbosity=True):
+  """?
+
+    Args:
+        initialSetup_dict (?): ?
+        generalSetup_dict (?): ?
+        hamiltonianData_dict_list (?): ?
+        magneticField_list (?): ?
+        temperature_list (?): ?
+        xLorentzian_list (?): ?
+        xGaussian_list (?): ?
+        folderpath (?): ?
+        quanty_exe (?): ?
+        prefix='untitled' (?): ?
+        verbosity=True (?): ?
+    """
 
     folderpath = Path(folderpath)
 
@@ -448,6 +552,20 @@ def create_spectra(initialSetup_dict, generalSetup_dict, hamiltonianData_dict_li
 ########### graveyard
 
 def create_input_OLD(generalSetup_dict, hamiltonianData_dict, filepath, temperature=None, xLorentzian=None, par_file=True):
+    """?
+
+    Args:
+        generalSetup_dict (?): ?
+        hamiltonianData_dict (?): ?
+        filepath (?): ?
+        temperature (?): ?
+        xLorentzian (?): ?
+        par_file (?): ?
+    
+    Return:
+        q?
+    """
+
     # if temperature is not None:
     #     generalSetup_dict['temperature']   = temperature
     # if xLorentzian is not None:
@@ -523,6 +641,18 @@ def create_input_OLD(generalSetup_dict, hamiltonianData_dict, filepath, temperat
 
 
 def normalize_data(x, y, x2interp, y2interp):
+    """?
+
+    Args:
+        x (?): ?
+        y (?): ?
+        x2interp (?): ?
+        y2interp (?): ?
+    
+    Return:
+        y?
+    """
+
     # normalizing
     y = y/max(y) * max(y2interp)
 
