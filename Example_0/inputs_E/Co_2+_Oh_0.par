@@ -1,0 +1,158 @@
+{
+    "initialSetup": {
+        "element": "Co",
+        "charge": "2+",
+        "symmetry": "Oh",
+        "edge": "L2,3 (2p)",
+        "experiment": "XAS"
+    },
+    "generalSetup": {
+        "verbosity": "0x0000",
+        "denseBorder": "2000",
+        "nPsisAuto": 1,
+        "nPsis": 120,
+        "nConfigurations": 1,
+        "XMin": 768.1,
+        "XMax": 808.1,
+        "xNPoints": 1000,
+        "k1": [
+            0,
+            0,
+            1
+        ],
+        "eps11": [
+            0,
+            1,
+            0
+        ],
+        "toCalculate": [
+            "Isotropic"
+        ],
+        "hamiltonianState": {
+            "Atomic": 2,
+            "Crystal Field": 2,
+            "3d-Ligands Hybridization (LMCT)": 0,
+            "3d-Ligands Hybridization (MLCT)": 0,
+            "Magnetic Field": 2,
+            "Exchange Field": 0
+        }
+    },
+    "hamiltonianData": {
+        "Atomic": {
+            "Initial Hamiltonian": {
+                "U(3d,3d)": 0.0,
+                "F2(3d,3d)": [
+                    11.6051,
+                    0.8
+                ],
+                "F4(3d,3d)": [
+                    7.2096,
+                    0.8
+                ],
+                "\u03b6(3d)": [
+                    0.066,
+                    1.0
+                ]
+            },
+            "Final Hamiltonian": {
+                "U(3d,3d)": 0.0,
+                "F2(3d,3d)": [
+                    12.3962,
+                    0.8
+                ],
+                "F4(3d,3d)": [
+                    7.708,
+                    0.8
+                ],
+                "U(2p,3d)": 0.0,
+                "F2(2p,3d)": [
+                    7.2598,
+                    0.8
+                ],
+                "G1(2p,3d)": [
+                    5.3941,
+                    0.8
+                ],
+                "G3(2p,3d)": [
+                    3.0679,
+                    0.8
+                ],
+                "\u03b6(3d)": [
+                    0.083,
+                    1.0
+                ],
+                "\u03b6(2p)": [
+                    9.7486,
+                    1.0
+                ]
+            }
+        },
+        "Crystal Field": {
+            "Initial Hamiltonian": {
+                "10Dq(5d)": 1.0,
+                "10Dq(3d)": 1.0
+            },
+            "Final Hamiltonian": {
+                "10Dq(5d)": 1.0,
+                "10Dq(3d)": 1.0
+            }
+        },
+        "3d-Ligands Hybridization (LMCT)": {
+            "Initial Hamiltonian": {
+                "\u0394(3d,L1)": 0.0,
+                "Veg(3d,L1)": 0.0,
+                "Vt2g(3d,L1)": 0.0,
+                "10Dq(L1)": 0.0
+            },
+            "Final Hamiltonian": {
+                "\u0394(3d,L1)": 0.0,
+                "Veg(3d,L1)": 0.0,
+                "Vt2g(3d,L1)": 0.0,
+                "10Dq(L1)": 0.0
+            }
+        },
+        "3d-Ligands Hybridization (MLCT)": {
+            "Initial Hamiltonian": {
+                "\u0394(3d,L2)": 0.0,
+                "Veg(3d,L2)": 0.0,
+                "Vt2g(3d,L2)": 0.0,
+                "10Dq(L2)": 0.0
+            },
+            "Final Hamiltonian": {
+                "\u0394(3d,L2)": 0.0,
+                "Veg(3d,L2)": 0.0,
+                "Vt2g(3d,L2)": 0.0,
+                "10Dq(L2)": 0.0
+            }
+        },
+        "Magnetic Field": {
+            "Initial Hamiltonian": {
+                "Bx": 0.0,
+                "By": 0.0,
+                "Bz": 0.0
+            },
+            "Final Hamiltonian": {
+                "Bx": 0.0,
+                "By": 0.0,
+                "Bz": 0.0
+            }
+        },
+        "Exchange Field": {
+            "Initial Hamiltonian": {
+                "Hx": 0.0,
+                "Hy": 0.0,
+                "Hz": 0.0
+            },
+            "Final Hamiltonian": {
+                "Hx": 0.0,
+                "Hy": 0.0,
+                "Hz": 0.0
+            }
+        }
+    },
+    "magneticField": 0,
+    "temperature": 10,
+    "xLorentzian": [
+        0.1
+    ]
+}
