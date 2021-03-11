@@ -26,7 +26,13 @@ def create_input(initialSetup_dict, generalSetup_dict, hamiltonianData_dict, fol
     """Gere o arquivo de entrada.
 
     Args:
-        initialSetup_dict (dict): Contém dados do elemento e experimento.
+        initialSetup_dict (dict): The dictionary contains five keyword arguments related
+            to the chemical element and experiment: ``element``, ``charge``, ``symmetry``,
+            ``edge`` and ``experiment``. The key to ``element`` can assume values like the
+            transitin metals, lanthanoids and actinoids. The ``charge`` receives the possible
+            values for the oxidation state of the element as 1+, 2+ and so on. The ``symmetry``
+            can be Oh, D4h, Td, C3v and D3h. The investigated edge can be K (1s), L1 (2s), L2,3 (2p)
+            and so on. The possible experiments are XAS, XES, XPS and RIXS.
         generalSetup_dict (dict): ?.
         hamiltonianData_dict (dict): ?.
         folderpath (?): ?.
