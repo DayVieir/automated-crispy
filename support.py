@@ -8,47 +8,57 @@ import subprocess
 import copy
 import sys
 import warnings
-import matplotlib.pyplot as plt
 import numpy as np
 
-# backpack
-sys.path.append(r'/home/dayane/Documents/carlos/06_23_20/py-backpack')
-sys.path.append(r'py-backpack')
-import backpack.filemanip as fmanip
-
 # crispy
+sys.path.append(r'/home/galdino/Documents/Dayane/crispy-0.7.3')
 from crispy.gui.quanty import QuantyCalculation
 from crispy.gui.quanty import broaden
 
 
-################# Create input and parameter file
-def create_input(initialSetup_dict, generalSetup_dict, hamiltonianData_dict, folderpath=None, filename=None, magneticField=None, temperature=None, xLorentzian=None, saveParameters2file=True):
-    """Gere o arquivo de entrada.
+def calculation_file(element='Ni',
+                     charge='2+',
+                     symmetry='Oh',
+                     edge='L2,3 (2p)',
+                     experiment='XAS',
+                     # toCalculate=['Circular Dichroism', 'Isotropic', 'Linear Dichroism'],  # must be a list
+                     toCalculate=['Isotropic'],
+                     magneticField=0,  # even if it zero, crispy add a very small magnetic field in order to have nice expected values for observables
+                     temperature=10,
+                     xLorentzian=(0.48, 0.52),  # min value for xLorentzian is 0.1
+                     k = (0, 0, 1),  # wave vector
+                     epsilon_v = (0, 1, 0),  # polarization vector
+                     XMin = None,  # Range min value in eV
+                     XMax = None,  # Range max value in eV
+                     xNPoints = None,  # number of points in the spectra
+                     nPsis = None, # number of states to calculate, Use ``None`` and it will be calculated.
+                     nConfigurations = None,  # number of comfigurations. If ``None``, it will be calculated (NOT SURE)
+                     #
+                     hamiltonianState = {'Atomic':True,
+                                         'Crystal Field':True,
+                                         '3d-Ligands Hybridization (LMCT)':False,
+                                         '3d-Ligands Hybridization (MLCT)':False,
+                                         'Magnetic Field':True,
+                                         'Exchange Field':False},
+                     #
+                     hamiltonian_terms=dict(),
+                     filepath = 'untitled',  # without suffix
+                     saveParameters2file=True):
+    """Create input file for Quanty.
 
     Args:
-        initialSetup_dict (dict): The dictionary contains five keyword arguments related
-            to the chemical element and experiment: ``element``, ``charge``, ``symmetry``,
-            ``edge`` and ``experiment``. The key to ``element`` can assume values like the
-            transitin metals, lanthanoids and actinoids. The ``charge`` receives the possible
-            values for the oxidation state of the element as 1+, 2+ and so on. The ``symmetry``
-            can be Oh, D4h, Td, C3v and D3h. The investigated edge can be K (1s), L1 (2s), L2,3 (2p)
-            and so on. The possible experiments are XAS, XES, XPS and RIXS.
-        generalSetup_dict (dict): ?.
-        hamiltonianData_dict (dict): ?.
-        folderpath (?): ?.
-        filename (?): ?.
-        magneticField (?): ?.
-        temperature (?): ?.
-        xLorentzian (?): ?.
-        saveParameters2file (?): ?.
+        element (string, optional): transitin metals, lanthanoids and actinoids
+        charge (string, optional): suitable oxidation state of the element as ``1+``, ``2+`` and so on.
+        symmetry (string, optional): local symmetry. Possible values are ``Oh``, ``D4h``, ``Td``, ``C3v`` and ``D3h``.
+        edge (string, optional): investigated edge. Possible values are ``K (1s)``, ``L1 (2s)``, ``L2,3 (2p)``
+        experiment (string, optional): experiment to simulate spectrum. Possible values are ``XAS``, ``XES``, ``XPS`` and ``RIXS``.
+        filapath (string or pathlib.Path, optional): filepath to save.
+
 
     Return:
         ?q
-    """
 
 
-
-    """ min xLorentzian is 0.1
         # RIXS
         q.yMin
         q.yMax
@@ -61,35 +71,29 @@ def create_input(initialSetup_dict, generalSetup_dict, hamiltonianData_dict, fol
         # q.xGaussian #(> 0)
     """
 
-    q = QuantyCalculation(**copy.deepcopy(initialSetup_dict))
+    # initialize calculation object
+    q = QuantyCalculation(element=element, charge=charge, symmetry=symmetry, edge=edge, experiment=experiment)
 
-    if 'verbosity' in generalSetup_dict:
-        q.verbosity = generalSetup_dict['verbosity']
-    else:
-        q.verbosity =  '0x0000'
+    # set verbosity (this is set the same as in crispy)
+    verbosity = '0x0000'
+    q.verbosity =  verbosity
 
-    if 'denseBorder' in generalSetup_dict:
-        q.denseBorder = generalSetup_dict['denseBorder']
-    else:
-        q.denseBorder = '2000'
+    # set border (this is set the same as in crispy)
+    denseBorder = '2000'
+    q.denseBorder = denseBorder
 
     # npsis
-    if 'nPsisAuto' in generalSetup_dict:
-        nPsisAuto = generalSetup_dict['nPsisAuto']
-    else:
-        nPsisAuto = q.nPsisAuto
-
-    if nPsisAuto == 1:
+    if nPsis is None:
+        q.nPsisAuto = 1
         q.nPsis = q.nPsisMax
     else:
-        if 'nPsis' in generalSetup_dict:
-            q.nPsis = generalSetup_dict['nPsis']
-        else:
-            q.nPsis = q.nPsisMax
+        q.nPsis = nPsis
 
     # nConfigurations
-    if 'nConfigurations' in generalSetup_dict:
-        q.nConfigurations = generalSetup_dict['nConfigurations']
+    if nConfigurations is None:
+        pass
+    else:
+        q.nConfigurations = nConfigurations
 
     # temperature
     if temperature is not None:
@@ -99,48 +103,44 @@ def create_input(initialSetup_dict, generalSetup_dict, hamiltonianData_dict, fol
     if xLorentzian is not None:
         q.xLorentzian = copy.copy(xLorentzian)
 
+    # magnetic Field,
+    _updateMagneticField(q, magneticField)
+    # if magneticField is not None:
+        # _updateMagneticField(q, magneticField)
+    # else:
+    #     _updateMagneticField(q, q.magneticField)
 
-    # magnetic Field
-    if magneticField is not None:
-        _updateMagneticField(q, magneticField)
+    # wave and polarization vector
+    _updateIncidentWaveVector(q, k)
+    _updateIncidentPolarizationVectors(q, epsilon_v)
+
+    # spectrum range
+    if XMin is not None:
+        q.xMin = XMin
+    if XMax is not None:
+        q.xMax = XMax
+    if xNPoints is not None:
+        q.xNPoints = xNPoints
+
+    # spectra to calculate
+    if type(toCalculate) == 'list':
+        q.spectra.toCalculateChecked = toCalculate
     else:
-        _updateMagneticField(q, q.magneticField)
-
-    if 'k1' in generalSetup_dict:
-        if 'eps11' in generalSetup_dict:
-            q.eps11 = generalSetup_dict['eps11']
-        else:
-            pass
-        _updateIncidentWaveVector(q, generalSetup_dict['k1'])
-    elif 'eps11' in generalSetup_dict:
-        _updateIncidentWaveVector(q, q.k1)
-        _updateIncidentPolarizationVectors(q, generalSetup_dict['eps11'])
-
-
-    if 'XMin' in generalSetup_dict:
-        q.xMin = generalSetup_dict['XMin']
-    if 'XMax' in generalSetup_dict:
-        q.xMax = generalSetup_dict['XMax']
-    if 'xNPoints' in generalSetup_dict:
-        q.xNPoints = generalSetup_dict['xNPoints']
-
-    if 'toCalculate' in generalSetup_dict:
-        q.spectra.toCalculateChecked = generalSetup_dict['toCalculate']
-
-
+        warnings.warn(f"'toCalculate' must be a list.") 
 
     # update hamiltonian states
-    if 'hamiltonianState' in generalSetup_dict:
-        for item in q.hamiltonianState:
-            try:
-                q.hamiltonianState[item] = generalSetup_dict['hamiltonianState'][item]
-            except KeyError:
-                warnings.warn(f"{item} not found in generalSetup_dict['hamiltonianState'].")
-            # except NameError:
-            #     pass
+    for item in q.hamiltonianState:
+        try:
+            if hamiltonianState[item] == True:
+                hamiltonianState[item] = 1
+            else:
+                hamiltonianState[item] = 0
+            q.hamiltonianState[item] = hamiltonianState[item]
+        except KeyError:
+            warnings.warn(f"{item} not found in hamiltonianState.")
 
     # fix hamiltonianData_dict
-    hamiltonianData_dict2 = copy.deepcopy(hamiltonianData_dict)
+    hamiltonianData_dict2 = copy.deepcopy(hamiltonian_terms)
     for key in hamiltonianData_dict2: # ['Atomic', 'Crystal Field', 'Magnetic Field', 'Exchange Field', '3d-Ligands Hybridization (LMCT)', '3d-Ligands Hybridization (MLCT)']
         for key2 in hamiltonianData_dict2[key]: # ['Initial Hamiltonian', 'Final Hamiltonian']
             for parameter in q.hamiltonianData[key][key2]:
@@ -164,38 +164,34 @@ def create_input(initialSetup_dict, generalSetup_dict, hamiltonianData_dict, fol
 
 
     # save input ======================================
-    if folderpath is None:
-        folderpath = Path.cwd()
-    else:
-        folderpath = Path(folderpath)
-    if filename is None:
-        filename = q.baseName
-    q.baseName = str(folderpath/filename)
+    filepath = Path(filepath)
+    q.baseName = str(filepath)
     q.saveInput()
 
-    # save parameters ====================================
-    if saveParameters2file:
-        generalSetup_dict2save = dict(verbosity         = q.verbosity
-                                      ,denseBorder      = q.denseBorder
-                                      ,nPsisAuto        = q.nPsisAuto
-                                      ,nPsis            = q.nPsis
-                                      ,nConfigurations  = q.nConfigurations
-                                      ,XMin             = q.xMin
-                                      ,XMax             = q.xMax
-                                      ,xNPoints         = q.xNPoints
-                                      ,k1               = q.k1
-                                      ,eps11            = q.eps11
-                                      ,toCalculate      = q.spectra.toCalculateChecked
-                                      ,hamiltonianState = q.hamiltonianState
-                                      )
-
-        dict2save = dict(initialSetup      = initialSetup_dict,
-                         generalSetup      = generalSetup_dict2save,
-                         hamiltonianData   = q.hamiltonianData,
-                         magneticField     = q.magneticField,
-                         temperature       = q.temperature,
-                         xLorentzian       = q.xLorentzian)
-        fmanip.save_obj(dict2save, q.baseName+'.par')
+    # # save parameters ====================================
+    # if saveParameters2file:
+    #     generalSetup_dict2save = dict(verbosity         = q.verbosity
+    #                                   ,denseBorder      = q.denseBorder
+    #                                   ,nPsisAuto        = q.nPsisAuto
+    #                                   ,nPsis            = q.nPsis
+    #                                   ,nConfigurations  = q.nConfigurations
+    #                                   ,XMin             = q.xMin
+    #                                   ,XMax             = q.xMax
+    #                                   ,xNPoints         = q.xNPoints
+    #                                   ,k1               = q.k1
+    #                                   ,eps11            = q.eps11
+    #                                   ,toCalculate      = q.spectra.toCalculateChecked
+    #                                   ,hamiltonianState = q.hamiltonianState
+    #                                   )
+    #
+    #     dict2save = dict(initialSetup      = initialSetup_dict,
+    #                      generalSetup      = generalSetup_dict2save,
+    #                      hamiltonianData   = q.hamiltonianData,
+    #                      magneticField     = q.magneticField,
+    #                      temperature       = q.temperature,
+    #                      xLorentzian       = q.xLorentzian)
+    #
+    #     save_obj(obj=dict2save, filepath=q.baseName+'.par')
 
     return q
 
@@ -296,7 +292,7 @@ def load_parameter(filepath):
         ?
     """
 
-    a = copy.deepcopy(fmanip.load_obj(filepath))
+    a = copy.deepcopy(load_obj(filepath))
     initialSetup    = a['initialSetup']
     generalSetup    = a['generalSetup']
     hamiltonianData = a['hamiltonianData']
@@ -304,6 +300,77 @@ def load_parameter(filepath):
     temperature     = a['temperature']
     xLorentzian     = a['xLorentzian']
     return initialSetup, generalSetup, hamiltonianData, magneticField, temperature, xLorentzian
+
+def _to_int(obj):
+    """Change keys of a dictionary from string to int when possible."""
+    for key in list(obj.keys()):
+        try:
+            if float(key).is_integer():
+                new_key = int(float(key))
+        except:
+            new_key = key
+        if new_key != key:
+            obj[new_key] = obj[key]
+            del obj[key]
+    return obj
+
+
+def save_obj(obj, filepath='./Untitled.txt', checkOverwrite=False, prettyPrint=True):
+    """Save object (array, dictionary, list, etc...) to a txt file.
+
+    Args:
+        obj (object): object to be saved.
+        filepath (str or pathlib.Path, optional): path to save file.
+        checkOverwrite (bool, optional): if True, it will check if file exists
+            and ask if user want to overwrite file.
+
+    See Also:
+        :py:func:`load_obj`
+    """
+    filepath = Path(filepath)
+
+    if checkOverwrite:
+        if filepath.exists() == True:
+            if filepath.is_file() == True:
+                if query_yes_no('File already exists!! Do you wish to ovewrite it?', 'yes') == True:
+                    pass
+                else:
+                    warnings.warn('File not saved because user did not allow overwriting.')
+                    return
+            else:
+                warnings.warn('filepath is pointing to a folder. Saving file as Untitled.txt')
+                filepath = filepath/'Untitled.txt'
+
+    with open(str(filepath), 'w') as file:
+        if prettyPrint:
+            file.write(json.dumps(obj, indent=4, sort_keys=False))
+        else:
+            file.write(json.dumps(obj))
+
+
+def load_obj(filepath, dict_keys_to_int=False):
+    """Load object (array, dictionary, list, etc...) from a txt file.
+
+    Args:
+        filepath (str or pathlib.Path): file path to load.
+        dict_keys_to_int (bool, optional): If True, it will change ALL
+            numeric dict keys (even for key in nested dictionarys to int, e.g.,
+            dictObject["0.0"] will turn into dictObject[0].
+
+    Returns:
+        object.
+
+    See Also:
+        :py:func:`save_obj`
+    """
+    filepath = Path(filepath)
+
+    with open(str(filepath), 'r') as file:
+        if dict_keys_to_int:
+            obj = json.load(file, object_hook=_to_int)
+        else:
+            obj = json.load(file)
+    return obj
 
 
 def run_quanty(quanty_exe, filepath):
@@ -367,7 +434,7 @@ def expand_hamiltanianData(hamiltonianData_dict, synchronize=False):
     Args:
         hamiltonianData_dict (?): ?
         synchronize (?): ?
-      
+
     Return:
         ?
     """
@@ -468,7 +535,7 @@ def _check_sync(hamiltonianData_dict):
 
     Args:
         hamiltonianData_dict (?): ?
-             
+
     Return:
         ?
     """
@@ -567,7 +634,7 @@ def create_input_OLD(generalSetup_dict, hamiltonianData_dict, filepath, temperat
         temperature (?): ?
         xLorentzian (?): ?
         par_file (?): ?
-    
+
     Return:
         q?
     """
@@ -654,7 +721,7 @@ def normalize_data(x, y, x2interp, y2interp):
         y (?): ?
         x2interp (?): ?
         y2interp (?): ?
-    
+
     Return:
         y?
     """
