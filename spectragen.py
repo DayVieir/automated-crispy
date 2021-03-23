@@ -9,6 +9,7 @@ import copy
 import sys
 import warnings
 import numpy as np
+import json
 
 # crispy
 sys.path.append(r'/home/galdino/Documents/Dayane/crispy-0.7.3')
@@ -21,9 +22,9 @@ def calculation_file(element='Ni',
                      symmetry='Oh',
                      edge='L2,3 (2p)',
                      experiment='XAS',
-                     # toCalculate=['Circular Dichroism', 'Isotropic', 'Linear Dichroism'],  # must be a list
-                     toCalculate=['Isotropic'],
-                     magneticField=0,  # even if it zero, crispy add a very small magnetic field in order to have nice expected values for observables
+                     toCalculate=['Circular Dichroism', 'Isotropic', 'Linear Dichroism'],  # must be a list
+                     # toCalculate=['Isotropic'],
+                     magneticField=10,  # Tesla. Even if it zero, crispy add a very small magnetic field in order to have nice expected values for observables
                      temperature=10,   # Kelvin
                      xLorentzian=(0.48, 0.52),  # min value for xLorentzian is 0.1
                      k = (0, 0, 1),  # wave vector
@@ -57,13 +58,20 @@ def calculation_file(element='Ni',
         ...
 
     Returns:
-        crispy.gui.quanty.QuantyCalculation object.
+        ``crispy.gui.quanty.QuantyCalculation`` object.
 
         Useful attributes of this object are:
 
             #. hamiltonianData
             #. baseName
-            #. saveInput()
+            #. hamiltonianData (Nao tenho certeza que podemos alterar o hamiltoniano depois de chamar a funcao. Tem que testar)
+
+        Use ``q.saveInput()`` to create another file.
+
+    Warning:
+        Do not edit temperature, magnetic field and other parameters after
+        creating the calculation object since it does some internal adjustments
+        on many parameters when the function is called.
 
 
     Problems -->> o rixs parece ter umas variaveis a mais. precisamos ver isso depois.
@@ -137,7 +145,7 @@ def calculation_file(element='Ni',
     # update hamiltonian states
     for item in q.hamiltonianState:
         try:
-            if hamiltonianState[item] == True:
+            if hamiltonianState[item] == True or hamiltonianState[item] == 1:
                 hamiltonianState[item] = 1
             else:
                 hamiltonianState[item] = 0
@@ -146,27 +154,29 @@ def calculation_file(element='Ni',
             warnings.warn(f"{item} not found in hamiltonianState.")
 
     # fix hamiltonianData_dict
-    hamiltonianData_dict2 = copy.deepcopy(hamiltonianData)
-    for key in hamiltonianData_dict2: # ['Atomic', 'Crystal Field', 'Magnetic Field', 'Exchange Field', '3d-Ligands Hybridization (LMCT)', '3d-Ligands Hybridization (MLCT)']
-        for key2 in hamiltonianData_dict2[key]: # ['Initial Hamiltonian', 'Final Hamiltonian']
+    hamiltonianData2 = copy.deepcopy(hamiltonianData)
+    for key in hamiltonianData2: # ['Atomic', 'Crystal Field', 'Magnetic Field', 'Exchange Field', '3d-Ligands Hybridization (LMCT)', '3d-Ligands Hybridization (MLCT)']
+        for key2 in hamiltonianData2[key]: # ['Initial Hamiltonian', 'Final Hamiltonian']
             for parameter in q.hamiltonianData[key][key2]:
 
                 try: # double valued parameters (Atomic)
-                    if hamiltonianData_dict2[key][key2][parameter][0] is None:  # if parameter not None
-                        hamiltonianData_dict2[key][key2][parameter][0] = copy.deepcopy(q.hamiltonianData[key][key2][parameter][0])
+                    if hamiltonianData2[key][key2][parameter][0] is None:  # if parameter not None
+                        hamiltonianData2[key][key2][parameter][0] = copy.deepcopy(q.hamiltonianData[key][key2][parameter][0])
 
                 except KeyError:  # if parameter is not defined
-                    hamiltonianData_dict2[key][key2][parameter] = copy.deepcopy(q.hamiltonianData[key][key2][parameter])
+                    hamiltonianData2[key][key2][parameter] = copy.deepcopy(q.hamiltonianData[key][key2][parameter])
 
                 except TypeError as e:    # single valued parameters
-                    if hamiltonianData_dict2[key][key2][parameter] is None:
-                        hamiltonianData_dict2[key][key2][parameter] = copy.deepcopy(q.hamiltonianData[key][key2][parameter])
+                    if hamiltonianData2[key][key2][parameter] is None:
+                        hamiltonianData2[key][key2][parameter] = copy.deepcopy(q.hamiltonianData[key][key2][parameter])
 
                 except IndexError as e:    # single valued parameters (if value is numpy.float64)
-                    if hamiltonianData_dict2[key][key2][parameter] is None:
-                        hamiltonianData_dict2[key][key2][parameter] = copy.deepcopy(q.hamiltonianData[key][key2][parameter])
+                    if hamiltonianData2[key][key2][parameter] is None:
+                        hamiltonianData2[key][key2][parameter] = copy.deepcopy(q.hamiltonianData[key][key2][parameter])
     # update hamiltonianData
-    q.hamiltonianData.update(hamiltonianData_dict2)
+    q.hamiltonianData.update(hamiltonianData2)
+
+    return q
 
     # save input
     filepath = Path(filepath)
@@ -176,14 +186,135 @@ def calculation_file(element='Ni',
     return q
 
 
-def _updateMagneticField(q, magneticField):
-    """Blá-blá
+def run_quanty(filepath_quanty, filepath):
+    """Run Quanty.
 
     Args:
-        q (?): ?
-        magneticField (?): ?
+        filepath_quanty (string or pathlib.Path): path to Quanty executable.
+        filepath (string or pathlib.Path): path to file.
+
+    Returns:
+        String with calculation output (stdout).
+    """
+    quanty_exe = str(Path(filepath_quanty))
+    quanty = subprocess.Popen([f"./{quanty_exe} {filepath}"], shell=True, close_fds=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output = quanty.stdout.read().decode("utf-8")
+    error  = quanty.stderr.read().decode("utf-8")
+
+    if error != '':
+        raise RuntimeError(f"Error while reading file: {filepath}. \n {error}")
+
+    if 'Error while loading the script' in output:
+        error = output[output.find('Error while loading the script')+len('Error while loading the script:')+1:]
+        warnings.warn(f'Error while loading file: {filepath}. \n {error}')
+    return output
+
+
+def load_spectrum(filepath):
+    try:
+        data = np.loadtxt(filepath, skiprows=5)
+    except (OSError, IOError) as e:
+        raise e
+
+    return data[:, 0], data[:, 2]
+
+
+def broadening(x, y, xGaussian=0.1, xMin=None, xMax=None, xNPoints=None):
+    """Apply gaussian broadening to spectrum.
+
+    Args:
+        x (?): ?
+        y
+        xMin (?): ?
+        xMax (?): ?
+        xNPoints (?): ?
+        xGaussian (?): ?
+
+    Returns:
+        broadene x and y.
+    """
+    if xMin is None:
+        xMin = min(x)
+    if xMax is None:
+        xMax = max(x)
+    if xNPoints is None:
+        xNPoints = len(x)
+
+    x2 = np.linspace(xMin, xMax, xNPoints + 1)
+    y2 = y.flatten()
+
+    fwhm = xGaussian
+    xScale = np.abs(x.min() - x.max()) / x.shape[0]
+    fwhm = fwhm/xScale
+    y = broaden(y, fwhm, 'gaussian')
+
+    return x, y
+
+
+def sync(hamiltonianData):
+    """Syncronize initial hamiltonian data with final hamiltonian data.
+
+    Args:
+        hamiltonianData (dict):
+
+    Returns:
+        sycronized hamiltonian data.
+    """
+    hamiltonianData2 = copy.deepcopy(hamiltonianData)
+    for key in hamiltonianData2:
+        for parameter in hamiltonianData2[key]['Initial Hamiltonian']:
+            hamiltonianData2[key]['Final Hamiltonian'][parameter] = copy.deepcopy(hamiltonianData2[key]['Initial Hamiltonian'][parameter])
+
+    return hamiltonianData2
+
+
+def save_parameters(q, filepath=None):
+    dict2save = dict(element        = q.element
+                  ,charge           = q.charge
+                  ,symmetry         = q.symmetry
+                  ,edge             = q.edge
+                  ,experiment       = q.experiment
+                  ,toCalculate      = q.spectra.toCalculateChecked
+                  ,magneticField    = q.magneticField
+                  ,temperature      = q.temperature
+                  ,xLorentzian      = q.xLorentzian
+                  ,nPsis            = q.nPsis
+                  ,nConfigurations  = q.nConfigurations
+                  ,XMin             = q.xMin
+                  ,XMax             = q.xMax
+                  ,xNPoints         = q.xNPoints
+                  ,k                = q.k1
+                  ,epsilon_v        = q.eps11
+                  ,hamiltonianState = q.hamiltonianState
+                  ,hamiltonianData  = q.hamiltonianData
+                  ,filepath         = q.baseName
+                  )
+
+    if filepath is None:
+        filepath = str(Path(dict2save[filepath]).with_suffix('.par'))
+    else:
+        filepath = str(Path(filepath).with_suffix('.par'))
+    _save_obj(obj=dict2save, filepath=filepath)
+
+
+def load_parameters(filepath):
+    """Load parameters.
+
+    Args:
+            filepath (string or pathlib.Path): filepath.
+
+    Returns:
+        dictionary with parameters.
     """
 
+    return _load_obj(filepath, dict_keys_to_int=False)
+
+
+
+# %% support functions =========================================================
+
+def _updateMagneticField(q, magneticField):
+    """Fix magnetic field."""
 
     TESLA_TO_EV = 5.788e-05
 
@@ -258,124 +389,6 @@ def _updateIncidentPolarizationVectors(q, eps11):
     q.eps12 = eps12
 
 
-def run_quanty(filepath_quanty, filepath):
-    """Run Quanty.
-
-    Args:
-        filepath_quanty (string or pathlib.Path): path to Quanty executable.
-        filepath (string or pathlib.Path): path to file.
-
-    Returns:
-        String with calculation output (stdout).
-    """
-    quanty_exe = str(Path(filepath_quanty))
-    quanty = subprocess.Popen([f"./{quanty_exe} {filepath}"], shell=True, close_fds=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    output = quanty.stdout.read().decode("utf-8")
-    error  = quanty.stderr.read().decode("utf-8")
-
-    if error != '':
-        raise RuntimeError(f"Error while reading file: {filepath}. \n {error}")
-
-    if 'Error while loading the script' in output:
-        error = output[output.find('Error while loading the script')+len('Error while loading the script:')+1:]
-        warnings.warn(f'Error while loading file: {filepath}. \n {error}')
-    return output
-
-
-def load_spectrum(filepath):
-    try:
-        data = np.loadtxt(filepath, skiprows=5)
-    except (OSError, IOError) as e:
-        raise e
-
-    return data[:, 0], data[:, 2]
-
-
-def broadening(x, y, xGaussian=0.1, xMin=None, xMax=None, xNPoints=None):
-    """?
-
-    Args:
-        filepath (?): ?
-        xMin (?): ?
-        xMax (?): ?
-        xNPoints (?): ?
-        xGaussian (?): ?
-
-    Returns:
-        ?
-    """
-    if xMin is None:
-        xMin = min(x)
-    if xMax is None:
-        xMax = max(x)
-    if xNPoints is None:
-        xNPoints = len(x)
-
-    x2 = np.linspace(xMin, xMax, xNPoints + 1)
-    y2 = y.flatten()
-
-    fwhm = xGaussian
-    xScale = np.abs(x.min() - x.max()) / x.shape[0]
-    fwhm = fwhm/xScale
-    y = broaden(y, fwhm, 'gaussian')
-
-    return x, y
-
-
-
-
-
-
-
-
-
-# # save parameters ====================================
-# if saveParameters2file:
-#     generalSetup_dict2save = dict(verbosity         = q.verbosity
-#                                   ,denseBorder      = q.denseBorder
-#                                   ,nPsisAuto        = q.nPsisAuto
-#                                   ,nPsis            = q.nPsis
-#                                   ,nConfigurations  = q.nConfigurations
-#                                   ,XMin             = q.xMin
-#                                   ,XMax             = q.xMax
-#                                   ,xNPoints         = q.xNPoints
-#                                   ,k1               = q.k1
-#                                   ,eps11            = q.eps11
-#                                   ,toCalculate      = q.spectra.toCalculateChecked
-#                                   ,hamiltonianState = q.hamiltonianState
-#                                   )
-#
-#     dict2save = dict(initialSetup      = initialSetup_dict,
-#                      generalSetup      = generalSetup_dict2save,
-#                      hamiltonianData   = q.hamiltonianData,
-#                      magneticField     = q.magneticField,
-#                      temperature       = q.temperature,
-#                      xLorentzian       = q.xLorentzian)
-#
-#     save_obj(obj=dict2save, filepath=q.baseName+'.par')
-
-def load_parameter(filepath):
-    """ initialSetup_dict, generalSetup_dict, hamiltonianData_dict, magneticField, temperature, xLorentzian = load_parameter(filepath)
-    """
-
-    """Blá-blá
-
-    Args:
-        filepath (?): ?
-
-    Return:
-        ?
-    """
-
-    a = copy.deepcopy(load_obj(filepath))
-    initialSetup    = a['initialSetup']
-    generalSetup    = a['generalSetup']
-    hamiltonianData = a['hamiltonianData']
-    magneticField   = a['magneticField']
-    temperature     = a['temperature']
-    xLorentzian     = a['xLorentzian']
-    return initialSetup, generalSetup, hamiltonianData, magneticField, temperature, xLorentzian
-
 def _to_int(obj):
     """Change keys of a dictionary from string to int when possible."""
     for key in list(obj.keys()):
@@ -390,7 +403,7 @@ def _to_int(obj):
     return obj
 
 
-def save_obj(obj, filepath='./Untitled.txt', checkOverwrite=False, prettyPrint=True):
+def _save_obj(obj, filepath='./Untitled.txt', checkOverwrite=False, prettyPrint=True):
     """Save object (array, dictionary, list, etc...) to a txt file.
 
     Args:
@@ -423,7 +436,7 @@ def save_obj(obj, filepath='./Untitled.txt', checkOverwrite=False, prettyPrint=T
             file.write(json.dumps(obj))
 
 
-def load_obj(filepath, dict_keys_to_int=False):
+def _load_obj(filepath, dict_keys_to_int=False):
     """Load object (array, dictionary, list, etc...) from a txt file.
 
     Args:
@@ -451,9 +464,7 @@ def load_obj(filepath, dict_keys_to_int=False):
 
 
 
-
-
-
+# %% OLD =======================================================================
 
 def expand_hamiltanianData(hamiltonianData_dict, synchronize=False):
     """?
@@ -557,51 +568,7 @@ def expand_hamiltanianData(hamiltonianData_dict, synchronize=False):
     return hamiltonianData_dict_list
 
 
-def _check_sync(hamiltonianData_dict):
-   """?
-
-    Args:
-        hamiltonianData_dict (?): ?
-
-    Return:
-        ?
-    """
-
-    hamiltonianData_dict2 = copy.deepcopy(hamiltonianData_dict)
-    for key in hamiltonianData_dict2:
-        for parameter in hamiltonianData_dict2[key]['Initial Hamiltonian']:
-            try:
-                if hamiltonianData_dict2[key]['Initial Hamiltonian'][parameter] == hamiltonianData_dict2[key]['Final Hamiltonian'][parameter]:
-                    pass
-                else:
-                    return -1
-            except KeyError:  # in case parameter is not defined for final Hamiltonian
-                try:
-                    hamiltonianData_dict2[key]['Final Hamiltonian'][parameter] = copy.copy(hamiltonianData_dict2[key]['Initial Hamiltonian'][parameter])
-                except KeyError:  # in case final Hamiltonian is not defined
-                    hamiltonianData_dict2[key]['Final Hamiltonian'] = {}
-                    hamiltonianData_dict2[key]['Final Hamiltonian'][parameter] =copy.copy(hamiltonianData_dict2[key]['Initial Hamiltonian'][parameter])
-
-    return hamiltonianData_dict2
-
-
 def create_spectra(initialSetup_dict, generalSetup_dict, hamiltonianData_dict_list, magneticField_list, temperature_list, xLorentzian_list, xGaussian_list, folderpath, quanty_exe, prefix='untitled_', verbosity=True):
-  """?
-
-    Args:
-        initialSetup_dict (?): ?
-        generalSetup_dict (?): ?
-        hamiltonianData_dict_list (?): ?
-        magneticField_list (?): ?
-        temperature_list (?): ?
-        xLorentzian_list (?): ?
-        xGaussian_list (?): ?
-        folderpath (?): ?
-        quanty_exe (?): ?
-        prefix='untitled' (?): ?
-        verbosity=True (?): ?
-    """
-
     folderpath = Path(folderpath)
 
     n_total = len(hamiltonianData_dict_list)*len(magneticField_list)*len(temperature_list)*len(xLorentzian_list)*len(xGaussian_list)
@@ -645,11 +612,6 @@ def create_spectra(initialSetup_dict, generalSetup_dict, hamiltonianData_dict_li
                             print(f'{filename}_{type}_broaden_{xGaussian} saved')
                     i += 1
 
-
-
-
-
-########### graveyard
 
 def create_input_OLD(generalSetup_dict, hamiltonianData_dict, filepath, temperature=None, xLorentzian=None, par_file=True):
     """?
@@ -767,74 +729,3 @@ def normalize_data(x, y, x2interp, y2interp):
     # interpolate data
     y = np.interp(x2interp, x, y)
     return y
-
-
-#
-# initialSetup_dict = dict(element             = 'Re'
-#                          ,charge             = '6+'
-#                          ,symmetry           = 'Oh'
-#                          ,edge               = 'L2,3 (2p)'
-#                          ,experiment         = 'XAS')
-#
-# generalSetup_dict = dict(nPsisAuto          = 1  # 0 or 1
-#                          # ,nPsis            = 100
-#                          # ,nConfigurations  = 1
-#                          # ,k1               = (0, 0, 1)
-#                          # ,eps11            = (0, 1, 0)
-#                          # ,xNPoints         = 1000
-#                          # ,XMin             = 10525
-#                          # ,XMax             = 10565
-#                          # ,xGaussian        = 0.1   # Does not change the input file
-#                          , toCalculate = ['Isotropic', 'Circular Dichroism', 'Linear Dichoism']
-#                          ,hamiltonianState   = {'Atomic' : 1,
-#                                                 'Crystal Field' : 1,
-#                                                 'Magnetic Field' : 1,
-#                                                 'Exchange Field' : 0,
-#                                                 '3d-Ligands Hybridization (LMCT)' : 0,
-#                                                 '3d-Ligands Hybridization (MLCT)' : 0,
-#                                                 '5d-Ligands Hybridization (LMCT)' : 0,
-#                                                 '5d-Ligands Hybridization (MLCT)' : 0,}
-#                          )
-# hamiltonianData_dict = {'Atomic': {   'Initial Hamiltonian': {#'U(5d,5d)'  : [0],
-#                                                               'F2(5d,5d)' : [None, 0.8],
-#                                                               'F4(5d,5d)' : [None, 0.8],
-#                                                               'ζ(5d)'     : [None, 1],
-#                                                              },
-#                                       'Final Hamiltonian'  : {#'U(5d,5d)'  : [0],
-#                                                                'F2(5d,5d)' : [None, 0.8],
-#                                                                'F4(5d,5d)' : [None, 0.8],
-#                                                                'ζ(5d)'     : [None, 1],
-#                                                               #'U(2p,5d)'  : [0],
-#                                                                'F2(2p,5d)' : [None, 0.8],
-#                                                                'G1(2p,5d)' : [None, 0.8],
-#                                                                'G3(2p,5d)' : [None, 0.8],
-#                                                                'ζ(5d)'     : [None, 1],
-#                                                                'ζ(2p)'     : [None, 1],
-#                                                                }
-#                               },
-#                       'Crystal Field': {'Initial Hamiltonian': {'10Dq(5d)'  : 1,  # eV
-#                                                                 },
-#                                         'Final Hamiltonian'  : {'10Dq(5d)'  : 1,  # eV
-#                                                                }
-#                                         },
-#   }
-#
-# xLorentzian      = [0.1]
-# xGaussian        = 2
-# temperature = None
-# magneticField = None
-# filepath = 'rrrrr'
-# q = create_input(initialSetup_dict, generalSetup_dict, hamiltonianData_dict,
-# folderpath=None, prefix=filepath,
-# magneticField=None, temperature=None,
-# xLorentzian=xLorentzian,
-# par_file=True)
-#
-# q.baseName
-# quanty_exe = Path('/home/galdino/Documents/CuSb2O6/quanty/quanty_lin/Quanty')
-# run_quanty(quanty_exe, filepath+'.lua')
-# fix_spec(filepath='rrrrr_iso.spec', xMin=q.xMin,
-#                                   xMax=q.xMax,
-#                                   xNPoints=q.xNPoints,
-#                                   xGaussian=xGaussian,
-#                                   output='ttttt')
