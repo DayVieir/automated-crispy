@@ -58,15 +58,13 @@ def calculation_file(element='Ni',
     Return:
         ?q
 
-
+    Problems -->> o rixs parece ter umas variaveis a mais. precisamos ver isso depois.
         # RIXS
         q.yMin
         q.yMax
         q.yNPoints
         q.yLorentzian
         q.yGaussian
-
-        # filename without .lua
 
         # q.xGaussian #(> 0)
     """
@@ -126,7 +124,7 @@ def calculation_file(element='Ni',
     if type(toCalculate) == 'list':
         q.spectra.toCalculateChecked = toCalculate
     else:
-        warnings.warn(f"'toCalculate' must be a list.") 
+        warnings.warn(f"'toCalculate' must be a list.")
 
     # update hamiltonian states
     for item in q.hamiltonianState:
