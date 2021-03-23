@@ -24,7 +24,7 @@ def calculation_file(element='Ni',
                      # toCalculate=['Circular Dichroism', 'Isotropic', 'Linear Dichroism'],  # must be a list
                      toCalculate=['Isotropic'],
                      magneticField=0,  # even if it zero, crispy add a very small magnetic field in order to have nice expected values for observables
-                     temperature=10,
+                     temperature=10,   # Kelvin
                      xLorentzian=(0.48, 0.52),  # min value for xLorentzian is 0.1
                      k = (0, 0, 1),  # wave vector
                      epsilon_v = (0, 1, 0),  # polarization vector
@@ -33,17 +33,15 @@ def calculation_file(element='Ni',
                      xNPoints = None,  # number of points in the spectra
                      nPsis = None, # number of states to calculate, Use ``None`` and it will be calculated.
                      nConfigurations = None,  # number of comfigurations. If ``None``, it will be calculated (NOT SURE)
-                     #
                      hamiltonianState = {'Atomic':True,
                                          'Crystal Field':True,
                                          '3d-Ligands Hybridization (LMCT)':False,
                                          '3d-Ligands Hybridization (MLCT)':False,
                                          'Magnetic Field':True,
                                          'Exchange Field':False},
-                     #
-                     hamiltonian_terms=dict(),
+                     hamiltonianData=dict(),
                      filepath = 'untitled',  # without suffix
-                     saveParameters2file=True):
+                     ):
     """Create input file for Quanty.
 
     Args:
@@ -53,10 +51,20 @@ def calculation_file(element='Ni',
         edge (string, optional): investigated edge. Possible values are ``K (1s)``, ``L1 (2s)``, ``L2,3 (2p)``
         experiment (string, optional): experiment to simulate spectrum. Possible values are ``XAS``, ``XES``, ``XPS`` and ``RIXS``.
         filapath (string or pathlib.Path, optional): filepath to save.
+        toCalculate (list, optional):
+        magneticField (number, optional):
+        temperature (number, optional):
+        ...
 
+    Returns:
+        crispy.gui.quanty.QuantyCalculation object.
 
-    Return:
-        ?q
+        Useful attributes of this object are:
+
+            #. hamiltonianData
+            #. baseName
+            #. saveInput()
+
 
     Problems -->> o rixs parece ter umas variaveis a mais. precisamos ver isso depois.
         # RIXS
@@ -121,7 +129,7 @@ def calculation_file(element='Ni',
         q.xNPoints = xNPoints
 
     # spectra to calculate
-    if type(toCalculate) == 'list':
+    if type(toCalculate) == list:
         q.spectra.toCalculateChecked = toCalculate
     else:
         warnings.warn(f"'toCalculate' must be a list.")
@@ -138,7 +146,7 @@ def calculation_file(element='Ni',
             warnings.warn(f"{item} not found in hamiltonianState.")
 
     # fix hamiltonianData_dict
-    hamiltonianData_dict2 = copy.deepcopy(hamiltonian_terms)
+    hamiltonianData_dict2 = copy.deepcopy(hamiltonianData)
     for key in hamiltonianData_dict2: # ['Atomic', 'Crystal Field', 'Magnetic Field', 'Exchange Field', '3d-Ligands Hybridization (LMCT)', '3d-Ligands Hybridization (MLCT)']
         for key2 in hamiltonianData_dict2[key]: # ['Initial Hamiltonian', 'Final Hamiltonian']
             for parameter in q.hamiltonianData[key][key2]:
@@ -160,36 +168,10 @@ def calculation_file(element='Ni',
     # update hamiltonianData
     q.hamiltonianData.update(hamiltonianData_dict2)
 
-
-    # save input ======================================
+    # save input
     filepath = Path(filepath)
     q.baseName = str(filepath)
     q.saveInput()
-
-    # # save parameters ====================================
-    # if saveParameters2file:
-    #     generalSetup_dict2save = dict(verbosity         = q.verbosity
-    #                                   ,denseBorder      = q.denseBorder
-    #                                   ,nPsisAuto        = q.nPsisAuto
-    #                                   ,nPsis            = q.nPsis
-    #                                   ,nConfigurations  = q.nConfigurations
-    #                                   ,XMin             = q.xMin
-    #                                   ,XMax             = q.xMax
-    #                                   ,xNPoints         = q.xNPoints
-    #                                   ,k1               = q.k1
-    #                                   ,eps11            = q.eps11
-    #                                   ,toCalculate      = q.spectra.toCalculateChecked
-    #                                   ,hamiltonianState = q.hamiltonianState
-    #                                   )
-    #
-    #     dict2save = dict(initialSetup      = initialSetup_dict,
-    #                      generalSetup      = generalSetup_dict2save,
-    #                      hamiltonianData   = q.hamiltonianData,
-    #                      magneticField     = q.magneticField,
-    #                      temperature       = q.temperature,
-    #                      xLorentzian       = q.xLorentzian)
-    #
-    #     save_obj(obj=dict2save, filepath=q.baseName+'.par')
 
     return q
 
@@ -276,6 +258,101 @@ def _updateIncidentPolarizationVectors(q, eps11):
     q.eps12 = eps12
 
 
+def run_quanty(filepath_quanty, filepath):
+    """Run Quanty.
+
+    Args:
+        filepath_quanty (string or pathlib.Path): path to Quanty executable.
+        filepath (string or pathlib.Path): path to file.
+
+    Returns:
+        String with calculation output (stdout).
+    """
+    quanty_exe = str(Path(filepath_quanty))
+    quanty = subprocess.Popen([f"./{quanty_exe} {filepath}"], shell=True, close_fds=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output = quanty.stdout.read().decode("utf-8")
+    error  = quanty.stderr.read().decode("utf-8")
+
+    if error != '':
+        raise RuntimeError(f"Error while reading file: {filepath}. \n {error}")
+
+    if 'Error while loading the script' in output:
+        error = output[output.find('Error while loading the script')+len('Error while loading the script:')+1:]
+        warnings.warn(f'Error while loading file: {filepath}. \n {error}')
+    return output
+
+
+def load_spectrum(filepath):
+    try:
+        data = np.loadtxt(filepath, skiprows=5)
+    except (OSError, IOError) as e:
+        raise e
+
+    return data[:, 0], data[:, 2]
+
+
+def broadening(x, y, xGaussian=0.1, xMin=None, xMax=None, xNPoints=None):
+    """?
+
+    Args:
+        filepath (?): ?
+        xMin (?): ?
+        xMax (?): ?
+        xNPoints (?): ?
+        xGaussian (?): ?
+
+    Returns:
+        ?
+    """
+    if xMin is None:
+        xMin = min(x)
+    if xMax is None:
+        xMax = max(x)
+    if xNPoints is None:
+        xNPoints = len(x)
+
+    x2 = np.linspace(xMin, xMax, xNPoints + 1)
+    y2 = y.flatten()
+
+    fwhm = xGaussian
+    xScale = np.abs(x.min() - x.max()) / x.shape[0]
+    fwhm = fwhm/xScale
+    y = broaden(y, fwhm, 'gaussian')
+
+    return x, y
+
+
+
+
+
+
+
+
+
+# # save parameters ====================================
+# if saveParameters2file:
+#     generalSetup_dict2save = dict(verbosity         = q.verbosity
+#                                   ,denseBorder      = q.denseBorder
+#                                   ,nPsisAuto        = q.nPsisAuto
+#                                   ,nPsis            = q.nPsis
+#                                   ,nConfigurations  = q.nConfigurations
+#                                   ,XMin             = q.xMin
+#                                   ,XMax             = q.xMax
+#                                   ,xNPoints         = q.xNPoints
+#                                   ,k1               = q.k1
+#                                   ,eps11            = q.eps11
+#                                   ,toCalculate      = q.spectra.toCalculateChecked
+#                                   ,hamiltonianState = q.hamiltonianState
+#                                   )
+#
+#     dict2save = dict(initialSetup      = initialSetup_dict,
+#                      generalSetup      = generalSetup_dict2save,
+#                      hamiltonianData   = q.hamiltonianData,
+#                      magneticField     = q.magneticField,
+#                      temperature       = q.temperature,
+#                      xLorentzian       = q.xLorentzian)
+#
+#     save_obj(obj=dict2save, filepath=q.baseName+'.par')
 
 def load_parameter(filepath):
     """ initialSetup_dict, generalSetup_dict, hamiltonianData_dict, magneticField, temperature, xLorentzian = load_parameter(filepath)
@@ -371,59 +448,11 @@ def load_obj(filepath, dict_keys_to_int=False):
     return obj
 
 
-def run_quanty(quanty_exe, filepath):
-
-    """Blá-blá
-
-    Args:
-        quanty_exe (?): ?
-        filepath (?): ?
-
-    Return:
-        ?
-    """
-
-    quanty = subprocess.Popen([f"{quanty_exe} {filepath}"], shell=True, close_fds=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    output = quanty.stdout.read().decode("utf-8")
-    error  = quanty.stderr.read().decode("utf-8")
-
-    if error is not '':
-        raise RuntimeError(f'Error while reading file: {filepath}. \n {error}')
-
-    if 'Error while loading the script' in output:
-        error = output[output.find('Error while loading the script')+len('Error while loading the script:')+1:]
-        warnings.warn(f'Error while loading file: {filepath}. \n {error}')
-    return output
 
 
-def fix_spectrum(filepath, xMin, xMax, xNPoints, xGaussian):
-    """?
 
-    Args:
-        filepath (?): ?
-        xMin (?): ?
-        xMax (?): ?
-        xNPoints (?): ?
-        xGaussian (?): ?
 
-    Return:
-        ?
-    """
 
-    try:
-        data = np.loadtxt(filepath, skiprows=5)
-    except (OSError, IOError) as e:
-        raise e
-
-    x = np.linspace(xMin, xMax, xNPoints + 1)
-    y = data[:, 2::2].flatten()
-
-    fwhm = xGaussian
-    xScale = np.abs(x.min() - x.max()) / x.shape[0]
-    fwhm = fwhm/xScale
-    y = broaden(y, fwhm, 'gaussian')
-
-    return x, y
 
 
 def expand_hamiltanianData(hamiltonianData_dict, synchronize=False):

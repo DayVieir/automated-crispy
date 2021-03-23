@@ -311,11 +311,11 @@ Jsqr = Jx * Jx + Jy * Jy + Jz * Jz
 if H_magnetic_field == 1 then
     Bx_i = 0.0
     By_i = 0.0
-    Bz_i = 0.0011576
+    Bz_i = 1.1920928955078125e-07
 
     Bx_f = 0.0
     By_f = 0.0
-    Bz_f = 0.0011576
+    Bz_f = 1.1920928955078125e-07
 
     H_i = H_i + Chop(
           Bx_i * (2 * Sx + Lx)
