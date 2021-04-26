@@ -15,8 +15,7 @@ plt.ion()  # interactive mode
 
 # initialize random calculation with default values
 q = sg.calculation_file()
-
-# file was saved as untitled.lua
+q.saveInput()  # file was saved as untitled.lua
 
 # run quanty
 output = sg.run_quanty(filepath_quanty='Quanty', filepath='untitled.lua')
@@ -43,6 +42,7 @@ par = sg.load_parameter('Ni_calculation.par')
 # run again with loaded parameters (let's change the filepath as well)
 par['filepath'] = 'Ni_calculation'
 q2 = sg.calculation_file(**par)
+q2.saveInput()
 output = sg.run_quanty(filepath_quanty='Quanty', filepath='Ni_calculation.lua')
 x2, y2 = sg.load_spectrum('Ni_calculation_iso.spec')
 x2b, y2b = sg.broadening(x2, y2, xGaussian=.4)
@@ -60,6 +60,7 @@ par['hamiltonianData'] = sg.sync(par['hamiltonianData'])
 # run again with loaded parameters and the modified hamiltonian
 par['filepath'] = 'Ni_calculation2'
 q3 = sg.calculation_file(**par)
+q3.saveInput()
 output = sg.run_quanty(filepath_quanty='Quanty', filepath='Ni_calculation2.lua')
 x3, y3 = sg.load_spectrum('Ni_calculation2_iso.spec')
 x3b, y3b = sg.broadening(x3, y3, xGaussian=.4)

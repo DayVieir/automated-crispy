@@ -176,12 +176,9 @@ def calculation_file(element='Ni',
     # update hamiltonianData
     q.hamiltonianData.update(hamiltonianData2)
 
-    return q
-
     # save input
     filepath = Path(filepath)
     q.baseName = str(filepath)
-    q.saveInput()
 
     return q
 
