@@ -37,7 +37,7 @@ sg.save_parameters(q, filepath='Ni_calculation')
 
 # we can open Ni_calculation.par and edit parameters there if we want
 # we can then load the parameters and run the calculation again any time
-par = sg.load_parameter('Ni_calculation.par')
+par = sg.load_parameters('Ni_calculation.par')
 
 # run again with loaded parameters (let's change the filepath as well)
 par['filepath'] = 'Ni_calculation'

@@ -12,7 +12,7 @@ import numpy as np
 import json
 
 # crispy
-sys.path.append(r'/home/galdino/Documents/Dayane/crispy-0.7.3')
+sys.path.append(r'/home/dayane/Documents/carlos/crispy-0.7.3')
 from crispy.gui.quanty import QuantyCalculation
 from crispy.gui.quanty import broaden
 
