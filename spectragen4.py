@@ -1218,8 +1218,6 @@ class Calculation():
             subst   = "_h.spec'}})"
             replace(filepath2, pattern, subst)
 
-        # rename ===============================================================
-
     def run(self, filepath=None):
         """Run Quanty.
 
