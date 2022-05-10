@@ -33,10 +33,7 @@ To do
 - [ ] LICENSE file and copyright section
 - [ ] DOI and citation section
 - [ ] this readme
-  - [ ] title
-  - [ ] introduction text
-  - [ ] Installation
-  - [ ] Usage
+
 
 
 Copyright
