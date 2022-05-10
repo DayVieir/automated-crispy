@@ -2,6 +2,8 @@
 Spectragen4
 ============
 
+Spectragen4 does this. Crispy, Quanty, something.
+
 Dependencies
 ==============
 
@@ -13,7 +15,12 @@ Dependencies
 Installation
 =============
 
-bfgadagsda
+#. Download Quanty
+  something
+
+#. Download Crispy
+    #. Download from source
+      something
 
 Usage
 =============
@@ -23,9 +30,13 @@ adgasd
 To do
 =========
 
-- [ ] Item A
-- [x] Item B
-- [x] Item C
+- [ ] LICENSE file and copyright section
+- [ ] DOI and citation section
+- [ ] this readme
+  - [ ] title
+  - [ ] introduction text
+  - [ ] Installation
+  - [ ] Usage
 
 
 Copyright
