@@ -1,5 +1,6 @@
 # Spectragen4
 
+[![Linux](https://svgshare.com/i/Zhy.svg)](https://svgshare.com/i/Zhy.svg)
 
 Spectragen4 does this. Crispy, Quanty, something.
 
@@ -38,6 +39,8 @@ This project is distributed under the Apache license version 2.0 (see the LICENS
 
 By submitting a pull request to this project, you agree to license your contribution under the Apache license version
 2.0 to this project.
+
+PHP Censor is open source software licensed under the BSD-2-Clause license.
 
 ## Citation
 
