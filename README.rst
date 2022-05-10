@@ -33,9 +33,6 @@ To do
 - [ ] LICENSE file and copyright section
 - [ ] DOI and citation section
 - [ ] this readme
-
-fasdf
-
   - [ ] title
   - [ ] introduction text
   - [ ] Installation
